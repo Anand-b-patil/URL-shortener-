@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - Smart URL Shortener</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stat-card {
+            transition: transform 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen py-8 px-4">
+    <!-- Navigation -->
+    <nav class="container mx-auto mb-8">
+        <div class="glass-effect rounded-2xl p-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-chart-line text-purple-600 text-2xl"></i>
+                <h1 class="text-2xl font-bold text-gray-800">Analytics Dashboard</h1>
+            </div>
+            <a href="/" class="text-purple-600 hover:text-purple-800 font-semibold flex items-center">
+                <i class="fas fa-home mr-2"></i> Home
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container mx-auto max-w-7xl">
+        <!-- Statistics Overview -->
+        <div id="statsOverview" class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="glass-effect rounded-xl p-6 stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold mb-1">Total URLs</p>
+                        <p id="totalUrls" class="text-3xl font-bold text-gray-800">0</p>
+                    </div>
+                    <i class="fas fa-link text-blue-500 text-4xl"></i>
+                </div>
+            </div>
+            <div class="glass-effect rounded-xl p-6 stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold mb-1">Total Clicks</p>
+                        <p id="totalClicks" class="text-3xl font-bold text-gray-800">0</p>
+                    </div>
+                    <i class="fas fa-mouse-pointer text-green-500 text-4xl"></i>
+                </div>
+            </div>
+            <div class="glass-effect rounded-xl p-6 stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold mb-1">Custom URLs</p>
+                        <p id="customUrls" class="text-3xl font-bold text-gray-800">0</p>
+                    </div>
+                    <i class="fas fa-star text-yellow-500 text-4xl"></i>
+                </div>
+            </div>
+            <div class="glass-effect rounded-xl p-6 stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold mb-1">Avg. Clicks</p>
+                        <p id="avgClicks" class="text-3xl font-bold text-gray-800">0</p>
+                    </div>
+                    <i class="fas fa-chart-bar text-purple-500 text-4xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="glass-effect rounded-xl p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Top 5 Most Clicked URLs</h3>
+                <canvas id="topUrlsChart"></canvas>
+            </div>
+            <div class="glass-effect rounded-xl p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">URL Creation Timeline</h3>
+                <canvas id="timelineChart"></canvas>
+            </div>
+        </div>
+
+        <!-- URLs Table -->
+        <div class="glass-effect rounded-2xl p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                    <i class="fas fa-table mr-3"></i>
+                    All Shortened URLs
+                </h2>
+                <div class="flex space-x-4">
+                    <select id="sortBy" class="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none">
+                        <option value="created_at">Sort by: Date</option>
+                        <option value="clicks">Sort by: Clicks</option>
+                    </select>
+                    <button onclick="refreshData()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center">
+                        <i class="fas fa-sync-alt mr-2"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="loading" class="text-center py-12">
+                <i class="fas fa-spinner fa-spin text-purple-600 text-4xl"></i>
+                <p class="text-gray-600 mt-4">Loading data...</p>
+            </div>
+
+            <!-- Table -->
+            <div id="tableContainer" class="hidden overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Short Code</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Original URL</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Clicks</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Created</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="urlsTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Table rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden text-center py-12">
+                <i class="fas fa-inbox text-gray-400 text-6xl mb-4"></i>
+                <p class="text-gray-600 text-xl">No URLs created yet</p>
+                <a href="/" class="inline-block mt-4 bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg">
+                    Create Your First URL
+                </a>
+            </div>
+
+            <!-- Pagination -->
+            <div id="pagination" class="hidden flex justify-center items-center space-x-2 mt-6">
+                <button onclick="loadPage(currentPage - 1)" id="prevBtn" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span id="pageInfo" class="text-gray-700 font-semibold"></span>
+                <button onclick="loadPage(currentPage + 1)" id="nextBtn" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50" disabled>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="container mx-auto mt-12 text-center text-white">
+        <p class="opacity-75">&copy; 2024 Smart URL Shortener. Built with ❤️ using Flask & Tailwind CSS</p>
+    </footer>
+
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let allUrls = [];
+        let topUrlsChart = null;
+        let timelineChart = null;
+
+        // Load dashboard data on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+        });
+
+        // Sort change handler
+        document.getElementById('sortBy').addEventListener('change', () => {
+            currentPage = 1;
+            loadData();
+        });
+
+        async function loadData() {
+            const sortBy = document.getElementById('sortBy').value;
+            const order = sortBy === 'clicks' ? 'desc' : 'desc';
+            
+            try {
+                const response = await fetch(`/api/stats?page=${currentPage}&per_page=100&sort_by=${sortBy}&order=${order}`);
+                const data = await response.json();
+                
+                allUrls = data.urls;
+                totalPages = data.pages;
+                
+                updateStatistics(data.urls);
+                updateCharts(data.urls);
+                renderTable(data.urls);
+                
+                document.getElementById('loading').classList.add('hidden');
+                
+                if (data.urls.length === 0) {
+                    document.getElementById('emptyState').classList.remove('hidden');
+                    document.getElementById('tableContainer').classList.add('hidden');
+                    document.getElementById('pagination').classList.add('hidden');
+                } else {
+                    document.getElementById('emptyState').classList.add('hidden');
+                    document.getElementById('tableContainer').classList.remove('hidden');
+                    document.getElementById('pagination').classList.remove('hidden');
+                }
+                
+                updatePagination();
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').innerHTML = '<p class="text-red-600">Error loading data. Please try again.</p>';
+            }
+        }
+
+        function updateStatistics(urls) {
+            const totalUrls = urls.length;
+            const totalClicks = urls.reduce((sum, url) => sum + url.clicks, 0);
+            const customUrls = urls.filter(url => url.custom).length;
+            const avgClicks = totalUrls > 0 ? Math.round(totalClicks / totalUrls) : 0;
+            
+            document.getElementById('totalUrls').textContent = totalUrls;
+            document.getElementById('totalClicks').textContent = totalClicks;
+            document.getElementById('customUrls').textContent = customUrls;
+            document.getElementById('avgClicks').textContent = avgClicks;
+        }
+
+        function updateCharts(urls) {
+            // Top 5 URLs Chart
+            const topUrls = [...urls].sort((a, b) => b.clicks - a.clicks).slice(0, 5);
+            
+            if (topUrlsChart) {
+                topUrlsChart.destroy();
+            }
+            
+            const ctx1 = document.getElementById('topUrlsChart').getContext('2d');
+            topUrlsChart = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: topUrls.map(url => url.short_code),
+                    datasets: [{
+                        label: 'Clicks',
+                        data: topUrls.map(url => url.clicks),
+                        backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Timeline Chart
+            const dates = {};
+            urls.forEach(url => {
+                const date = url.created_at.split(' ')[0];
+                dates[date] = (dates[date] || 0) + 1;
+            });
+            
+            const sortedDates = Object.keys(dates).sort();
+            
+            if (timelineChart) {
+                timelineChart.destroy();
+            }
+            
+            const ctx2 = document.getElementById('timelineChart').getContext('2d');
+            timelineChart = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: sortedDates,
+                    datasets: [{
+                        label: 'URLs Created',
+                        data: sortedDates.map(date => dates[date]),
+                        backgroundColor: 'rgba(118, 75, 162, 0.2)',
+                        borderColor: 'rgba(118, 75, 162, 1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTable(urls) {
+            const tbody = document.getElementById('urlsTableBody');
+            tbody.innerHTML = '';
+            
+            urls.forEach(url => {
+                const row = `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <a href="/${url.short_code}" target="_blank" class="text-purple-600 hover:text-purple-800 font-mono font-semibold">
+                                ${url.short_code}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="max-w-xs truncate text-gray-800" title="${url.original_url}">
+                                ${url.original_url}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                ${url.clicks} clicks
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            ${new Date(url.created_at).toLocaleDateString()}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${url.custom ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}">
+                                ${url.custom ? 'Custom' : 'Random'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="copyShortUrl('${url.short_url}')" class="text-purple-600 hover:text-purple-900 mr-3" title="Copy URL">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <button onclick="deleteUrl('${url.short_code}')" class="text-red-600 hover:text-red-900" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function updatePagination() {
+            document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage === totalPages;
+        }
+
+        function loadPage(page) {
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                loadData();
+            }
+        }
+
+        function copyShortUrl(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('URL copied to clipboard!');
+            });
+        }
+
+        async function deleteUrl(shortCode) {
+            if (!confirm('Are you sure you want to delete this URL?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/delete/${shortCode}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('URL deleted successfully!');
+                    loadData();
+                } else {
+                    alert('Error deleting URL. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error deleting URL:', error);
+                alert('Error deleting URL. Please try again.');
+            }
+        }
+
+        function refreshData() {
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('tableContainer').classList.add('hidden');
+            loadData();
+        }
+    </script>
+</body>
+</html>

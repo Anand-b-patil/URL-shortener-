@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Expired</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center px-4">
+    <div class="text-center text-white">
+        <i class="fas fa-hourglass-end text-9xl mb-8 opacity-75"></i>
+        <h1 class="text-6xl font-bold mb-4">410</h1>
+        <h2 class="text-3xl font-semibold mb-4">Link Expired</h2>
+        <p class="text-xl mb-8 opacity-90">
+            {% if short_code %}
+                The short URL "<span class="font-mono font-bold">{{ short_code }}</span>" has expired.
+            {% else %}
+                This link has expired and is no longer available.
+            {% endif %}
+        </p>
+        <a href="/" class="inline-block bg-white text-purple-600 font-bold px-8 py-4 rounded-lg hover:bg-gray-100 transition">
+            <i class="fas fa-home mr-2"></i>
+            Go to Homepage
+        </a>
+    </div>
+</body>
+</html>
