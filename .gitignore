@@ -43,6 +43,7 @@ build/
 .coverage
 htmlcov/
 
+# Logs
 .env.example
 API_DOCUMENTATION.md
 ARCHITECTURE.md
