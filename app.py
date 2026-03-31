@@ -362,6 +362,14 @@ def init_db():
         print("⚠️  Please check your database connection settings")
         raise
 
+# Initialize database tables (works with both Flask dev server and Gunicorn)
+with app.app_context():
+    try:
+        db.create_all()
+        print("✅ Database tables created/verified successfully!")
+    except Exception as e:
+        print(f"⚠️  Database initialization warning: {str(e)}")
+
 # ============================================
 # MAIN
 # ============================================
@@ -369,9 +377,6 @@ def init_db():
 if __name__ == '__main__':
     # Import timedelta for expiry feature
     from datetime import timedelta
-    
-    # Initialize database
-    init_db()
     
     # Run the app
     print("🚀 Starting Smart URL Shortener...")
