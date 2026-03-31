@@ -19,8 +19,28 @@ from urllib.parse import urlparse
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///urls.db'
+
+# Database configuration with PostgreSQL support
+# Use DATABASE_URL from environment (Render provides this automatically)
+# Falls back to SQLite for local development
+database_url = os.environ.get('DATABASE_URL')
+
+if database_url:
+    # Render PostgreSQL URL fix: postgres:// -> postgresql://
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    print(f"🗄️  Using PostgreSQL database")
+else:
+    # Local development - use SQLite
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///urls.db'
+    print(f"🗄️  Using SQLite database (development mode)")
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,  # Verify connections before using them
+    'pool_recycle': 300,    # Recycle connections after 5 minutes
+}
 
 # Initialize extensions
 db = SQLAlchemy(app)
@@ -332,10 +352,15 @@ def server_error(e):
 # ============================================
 
 def init_db():
-    """Initialize database"""
-    with app.app_context():
-        db.create_all()
-        print("✅ Database initialized successfully!")
+    """Initialize database with error handling"""
+    try:
+        with app.app_context():
+            db.create_all()
+            print("✅ Database initialized successfully!")
+    except Exception as e:
+        print(f"❌ Database initialization failed: {str(e)}")
+        print("⚠️  Please check your database connection settings")
+        raise
 
 # ============================================
 # MAIN
